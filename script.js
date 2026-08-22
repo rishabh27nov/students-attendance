@@ -291,6 +291,9 @@ function populateStudentMeetingDropdown(selectedStudentClass = '') {
 
   if (!selectElem) return;
 
+  // Preserve student's current selection if already chosen
+  const previousSelectedVal = selectElem.value;
+
   if (!selectedStudentClass) {
     selectElem.innerHTML = '<option value="" disabled selected>-- Please Select Your Class / Batch First --</option>';
     if (timeSlotElem) {
@@ -336,10 +339,16 @@ function populateStudentMeetingDropdown(selectedStudentClass = '') {
 
       selectElem.appendChild(opt);
     });
+
+    // Restore student's previously selected meeting value if valid
+    if (previousSelectedVal && Array.from(selectElem.options).some(opt => opt.value === previousSelectedVal)) {
+      selectElem.value = previousSelectedVal;
+      onStudentMeetingChange();
+    }
   }
 
-  // Reset Time Slot Dropdown until meeting is chosen
-  if (timeSlotElem) {
+  // Reset Time Slot Dropdown only if no meeting is selected
+  if (timeSlotElem && !selectElem.value) {
     timeSlotElem.innerHTML = '<option value="" disabled selected>-- Select Zoom Meeting First --</option>';
   }
 
