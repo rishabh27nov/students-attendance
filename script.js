@@ -161,6 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAttendanceTable();
   updateStats();
   fetchLiveMeetingsFromCloud();
+
+  // Auto-sync live meetings every 10 seconds across all devices
+  setInterval(fetchLiveMeetingsFromCloud, 10000);
 });
 
 // Populate 12-Hour Hour & Complete 60 Minute Dropdowns
@@ -356,6 +359,7 @@ function populateStudentMeetingDropdown(selectedStudentClass = '') {
 function filterMeetingsForStudent() {
   const selectedClass = document.getElementById('studentClass').value;
   populateStudentMeetingDropdown(selectedClass);
+  fetchLiveMeetingsFromCloud();
 }
 
 // Auto-fill details when Student chooses a Meeting
