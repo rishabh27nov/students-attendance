@@ -33,71 +33,11 @@ function formatDisplayDate(dateStr) {
 const getTodayISODate = () => new Date().toISOString().slice(0, 10);
 
 // Default Meetings list if empty
-const defaultMeetings = [
-  {
-    id: 'mtg_1',
-    topic: '11 JEE Mathematics (Live Practice Session)',
-    date: getTodayISODate(),
-    slot: '12:00 AM - 11:59 PM',
-    url: 'https://zoom.us/j/9876543210?pwd=MathsClassLink',
-    passcode: '123456',
-    targetBatches: ['11 JEE', '12 JEE']
-  },
-  {
-    id: 'mtg_2',
-    topic: '11 NEET Biology (Evening Batch)',
-    date: getTodayISODate(),
-    slot: '7:00 PM - 8:00 PM',
-    url: 'https://zoom.us/j/9876543211?pwd=BiologyClassLink',
-    passcode: '654321',
-    targetBatches: ['11 NEET', '12 NEET']
-  },
-  {
-    id: 'mtg_3',
-    topic: '12 JEE Physics Special (Night Batch)',
-    date: getTodayISODate(),
-    slot: '9:00 PM - 10:00 PM',
-    url: 'https://zoom.us/j/9876543212?pwd=PhysicsClassLink',
-    passcode: '999888',
-    targetBatches: ['12 JEE']
-  }
-];
+const defaultMeetings = [];
 
 // Initialize Application Data
 let attendanceLogs = JSON.parse(localStorage.getItem(STORAGE_ATTENDANCE_KEY)) || [];
 let meetingsList = JSON.parse(localStorage.getItem(STORAGE_MEETINGS_KEY)) || defaultMeetings;
-
-// Mock initial data if logs empty
-if (attendanceLogs.length === 0) {
-  const now = new Date();
-  attendanceLogs = [
-    {
-      id: 'att_1',
-      name: 'Rohan Sharma',
-      class: '11 JEE',
-      course: 'JEE Mathematics',
-      classDate: getTodayISODate(),
-      formattedClassDate: formatDisplayDate(getTodayISODate()),
-      timeSlot: '6:00 PM - 7:00 PM',
-      meetingId: 'mtg_1',
-      timestamp: new Date(now.getTime() - 1000 * 60 * 50).toISOString(),
-      formattedDate: new Date(now.getTime() - 1000 * 60 * 50).toLocaleString('en-IN')
-    },
-    {
-      id: 'att_2',
-      name: 'Ananya Gupta',
-      class: '11 NEET',
-      course: 'NEET Biology',
-      classDate: getTodayISODate(),
-      formattedClassDate: formatDisplayDate(getTodayISODate()),
-      timeSlot: '7:00 PM - 8:00 PM',
-      meetingId: 'mtg_2',
-      timestamp: new Date(now.getTime() - 1000 * 60 * 10).toISOString(),
-      formattedDate: new Date(now.getTime() - 1000 * 60 * 10).toLocaleString('en-IN')
-    }
-  ];
-  saveLogsToStorage();
-}
 
 // Storage helpers
 function saveLogsToStorage() {
