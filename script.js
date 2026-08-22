@@ -663,9 +663,6 @@ function togglePassVisibility() {
 // Handle Student Attendance Submission
 let activeSubmittedMeeting = null;
 
-// Handle Student Attendance Submission
-let activeSubmittedMeeting = null;
-
 function handleAttendanceSubmit(event) {
   event.preventDefault();
 
