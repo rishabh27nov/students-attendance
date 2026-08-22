@@ -245,7 +245,12 @@ function checkMeetingTimeStatus(slotStr, meetingDateStr) {
     }
 
     const startTime = parseTimeStringToDate(parts[0], now);
-    const endTime = parseTimeStringToDate(parts[1], now);
+    let endTime = parseTimeStringToDate(parts[1], now);
+
+    // If end time is earlier than or equal to start time (e.g., spanning midnight or PM/AM wrap), adjust end time to next day
+    if (endTime <= startTime) {
+      endTime = new Date(endTime.getTime() + 24 * 60 * 60 * 1000);
+    }
 
     // 2 Minutes Early Access Buffer (e.g. 7:58 PM for an 8:00 PM class)
     const earlyStartTime = new Date(startTime.getTime() - 2 * 60 * 1000);
