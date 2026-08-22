@@ -106,6 +106,47 @@ function saveLogsToStorage() {
 
 function saveMeetingsToStorage() {
   localStorage.setItem(STORAGE_MEETINGS_KEY, JSON.stringify(meetingsList));
+
+  // Sync Meeting Config to Cloud (Google Apps Script) so all browsers/devices see it instantly
+  const gsheetUrl = localStorage.getItem(STORAGE_GSHEET_KEY) || DEFAULT_GSHEET_URL;
+  if (gsheetUrl) {
+    try {
+      const payload = encodeURIComponent(JSON.stringify(meetingsList));
+      fetch(`${gsheetUrl}?action=saveMeetings&meetings=${payload}`, {
+        method: 'GET',
+        mode: 'no-cors'
+      });
+      fetch(gsheetUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'saveMeetings', meetings: meetingsList })
+      });
+    } catch (e) {
+      console.log('Cloud meeting save notice:', e);
+    }
+  }
+}
+
+// Fetch Live Meetings from Cloud (Google Apps Script) for Cross-Browser / Multi-Device Sync
+function fetchLiveMeetingsFromCloud() {
+  const gsheetUrl = localStorage.getItem(STORAGE_GSHEET_KEY) || DEFAULT_GSHEET_URL;
+  if (!gsheetUrl) return;
+
+  fetch(`${gsheetUrl}?action=getMeetings`)
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.status === 'success' && Array.isArray(data.meetings) && data.meetings.length > 0) {
+        meetingsList = data.meetings;
+        localStorage.setItem(STORAGE_MEETINGS_KEY, JSON.stringify(meetingsList));
+        renderMeetingsListTable();
+        const selectedClass = document.getElementById('studentClass') ? document.getElementById('studentClass').value : '';
+        populateStudentMeetingDropdown(selectedClass);
+      }
+    })
+    .catch(err => {
+      console.log('Using local meeting storage cache:', err);
+    });
 }
 
 // DOM Initialization
@@ -119,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
   populateStudentMeetingDropdown();
   renderAttendanceTable();
   updateStats();
+  fetchLiveMeetingsFromCloud();
 });
 
 // Populate 12-Hour Hour & Complete 60 Minute Dropdowns
