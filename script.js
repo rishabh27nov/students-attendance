@@ -111,11 +111,6 @@ function saveMeetingsToStorage() {
   const gsheetUrl = localStorage.getItem(STORAGE_GSHEET_KEY) || DEFAULT_GSHEET_URL;
   if (gsheetUrl) {
     try {
-      const payload = encodeURIComponent(JSON.stringify(meetingsList));
-      fetch(`${gsheetUrl}?action=saveMeetings&meetings=${payload}`, {
-        method: 'GET',
-        mode: 'no-cors'
-      });
       fetch(gsheetUrl, {
         method: 'POST',
         mode: 'no-cors',
@@ -766,26 +761,10 @@ function handleAttendanceSubmit(event) {
   attendanceLogs.unshift(newEntry);
   saveLogsToStorage();
 
-  // Live Sync to Google Sheet Webhook if configured (GET + POST fallback)
+  // Live Sync to Google Sheet Webhook if configured (Single clean POST to prevent duplicate entries)
   const gsheetUrl = localStorage.getItem('educlass_gsheet_url_v1') || DEFAULT_GSHEET_URL;
   if (gsheetUrl) {
     try {
-      const queryParams = new URLSearchParams({
-        name: newEntry.name || '',
-        class: newEntry.class || '',
-        course: newEntry.course || '',
-        classDate: newEntry.formattedClassDate || '',
-        timeSlot: newEntry.timeSlot || '',
-        formattedDate: newEntry.formattedDate || ''
-      }).toString();
-
-      // Send GET request with query params
-      fetch(`${gsheetUrl}?${queryParams}`, {
-        method: 'GET',
-        mode: 'no-cors'
-      });
-
-      // Also send POST request fallback
       fetch(gsheetUrl, {
         method: 'POST',
         mode: 'no-cors',
