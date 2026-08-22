@@ -11,11 +11,33 @@ if (!localStorage.getItem(STORAGE_GSHEET_KEY)) {
   localStorage.setItem(STORAGE_GSHEET_KEY, DEFAULT_GSHEET_URL);
 }
 
+// Helper: Format Date string to DD/MM/YYYY
+function formatDisplayDate(dateStr) {
+  if (!dateStr) {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
+  if (dateStr.includes('-')) {
+    const parts = dateStr.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
+  return dateStr;
+}
+
+const getTodayISODate = () => new Date().toISOString().slice(0, 10);
+
 // Default Meetings list if empty
 const defaultMeetings = [
   {
     id: 'mtg_1',
     topic: '11 JEE Mathematics (Live Practice Session)',
+    date: getTodayISODate(),
     slot: '12:00 AM - 11:59 PM',
     url: 'https://zoom.us/j/9876543210?pwd=MathsClassLink',
     passcode: '123456',
@@ -24,6 +46,7 @@ const defaultMeetings = [
   {
     id: 'mtg_2',
     topic: '11 NEET Biology (Evening Batch)',
+    date: getTodayISODate(),
     slot: '7:00 PM - 8:00 PM',
     url: 'https://zoom.us/j/9876543211?pwd=BiologyClassLink',
     passcode: '654321',
@@ -32,6 +55,7 @@ const defaultMeetings = [
   {
     id: 'mtg_3',
     topic: '12 JEE Physics Special (Night Batch)',
+    date: getTodayISODate(),
     slot: '9:00 PM - 10:00 PM',
     url: 'https://zoom.us/j/9876543212?pwd=PhysicsClassLink',
     passcode: '999888',
@@ -52,6 +76,8 @@ if (attendanceLogs.length === 0) {
       name: 'Rohan Sharma',
       class: '11 JEE',
       course: 'JEE Mathematics',
+      classDate: getTodayISODate(),
+      formattedClassDate: formatDisplayDate(getTodayISODate()),
       timeSlot: '6:00 PM - 7:00 PM',
       meetingId: 'mtg_1',
       timestamp: new Date(now.getTime() - 1000 * 60 * 50).toISOString(),
@@ -62,6 +88,8 @@ if (attendanceLogs.length === 0) {
       name: 'Ananya Gupta',
       class: '11 NEET',
       course: 'NEET Biology',
+      classDate: getTodayISODate(),
+      formattedClassDate: formatDisplayDate(getTodayISODate()),
       timeSlot: '7:00 PM - 8:00 PM',
       meetingId: 'mtg_2',
       timestamp: new Date(now.getTime() - 1000 * 60 * 10).toISOString(),
@@ -82,6 +110,10 @@ function saveMeetingsToStorage() {
 
 // DOM Initialization
 document.addEventListener('DOMContentLoaded', () => {
+  const dateInput = document.getElementById('newMeetingDate');
+  if (dateInput) {
+    dateInput.value = getTodayISODate();
+  }
   populate12HourDropdowns();
   renderMeetingsListTable();
   populateStudentMeetingDropdown();
@@ -150,8 +182,8 @@ function getFormatted12HourSlot() {
   return `${startH}:${startM} ${startAmpm} - ${endH}:${endM} ${endAmpm}`;
 }
 
-// Time Slot Active Status Checker (with 2-Minute Early Access Buffer)
-function checkMeetingTimeStatus(slotStr) {
+// Time Slot Active Status Checker (with Date & 2-Minute Early Access Buffer)
+function checkMeetingTimeStatus(slotStr, meetingDateStr) {
   if (!slotStr) return { status: 'LIVE', isActive: true, label: '🟢 LIVE NOW' };
 
   try {
@@ -159,6 +191,19 @@ function checkMeetingTimeStatus(slotStr) {
     if (parts.length !== 2) return { status: 'LIVE', isActive: true, label: '🟢 LIVE NOW' };
 
     const now = new Date();
+    const todayStr = getTodayISODate();
+    const formattedMtgDate = formatDisplayDate(meetingDateStr || todayStr);
+
+    // If meeting date is set and is in the future
+    if (meetingDateStr && meetingDateStr > todayStr) {
+      return { status: 'UPCOMING', isActive: false, label: `🔒 UPCOMING (${formattedMtgDate})` };
+    }
+
+    // If meeting date is in the past
+    if (meetingDateStr && meetingDateStr < todayStr) {
+      return { status: 'ENDED', isActive: false, label: `⌛ CLASS ENDED (${formattedMtgDate})` };
+    }
+
     const startTime = parseTimeStringToDate(parts[0], now);
     const endTime = parseTimeStringToDate(parts[1], now);
 
@@ -211,9 +256,7 @@ function populateStudentMeetingDropdown(selectedStudentClass = '') {
 
   // Filter meetings based on Student's Selected Class/Batch
   const eligibleMeetings = meetingsList.filter(m => {
-    // Multi-Select Batch Filter Logic
     const batches = m.targetBatches || (m.targetClass ? [m.targetClass] : []);
-
     if (batches.includes('All Batches') || batches.includes('All Classes / General') || batches.length === 0) {
       return true;
     }
@@ -229,17 +272,18 @@ function populateStudentMeetingDropdown(selectedStudentClass = '') {
       const opt = document.createElement('option');
       opt.value = m.id;
 
-      const timeStatus = checkMeetingTimeStatus(m.slot);
+      const timeStatus = checkMeetingTimeStatus(m.slot, m.date);
+      const displayDate = formatDisplayDate(m.date || getTodayISODate());
 
       if (timeStatus.isActive) {
         // Active / Current Class: Enabled & Clickable
-        opt.textContent = `${timeStatus.label}: ${m.topic} (${m.slot})`;
+        opt.textContent = `${timeStatus.label}: ${m.topic} (${displayDate} | ${m.slot})`;
         opt.disabled = false;
         opt.style.fontWeight = '700';
         opt.style.color = '#fff';
       } else {
         // Inactive Class: Disabled & Semi-Transparent
-        opt.textContent = `${timeStatus.label}: ${m.topic} (${m.slot})`;
+        opt.textContent = `${timeStatus.label}: ${m.topic} (${displayDate} | ${m.slot})`;
         opt.disabled = true;
         opt.style.opacity = '0.4';
         opt.style.color = 'rgba(255, 255, 255, 0.45)';
@@ -291,7 +335,7 @@ function renderMeetingsListTable() {
   tbody.innerHTML = '';
 
   if (meetingsList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No meetings configured yet. Click "+ Add New Meeting" above to create one.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No meetings configured yet. Click "+ Add New Meeting" above to create one.</td></tr>`;
     return;
   }
 
@@ -299,9 +343,11 @@ function renderMeetingsListTable() {
     const tr = document.createElement('tr');
     const batchesArr = m.targetBatches || (m.targetClass ? [m.targetClass] : ['All Batches']);
     const targetDisplay = batchesArr.join(', ');
+    const displayDate = formatDisplayDate(m.date || getTodayISODate());
 
     tr.innerHTML = `
       <td>${idx + 1}</td>
+      <td><span class="badge-tag" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7;"><i class="fa-solid fa-calendar-day"></i> ${escapeHtml(displayDate)}</span></td>
       <td><strong>${escapeHtml(m.topic)}</strong></td>
       <td><span class="badge-tag" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc;"><i class="fa-regular fa-clock"></i> ${escapeHtml(m.slot)}</span></td>
       <td><code>${escapeHtml(m.passcode || 'None')}</code></td>
@@ -342,14 +388,12 @@ function editMeeting(id) {
   const meeting = meetingsList.find(m => m.id === id);
   if (!meeting) return;
 
-  // Make sure form is visible
   const form = document.getElementById('addMeetingForm');
   if (form) {
     form.style.display = 'block';
     form.classList.remove('hidden');
   }
 
-  // Populate form fields
   document.getElementById('editingMeetingId').value = meeting.id;
 
   const topicSelect = document.getElementById('newMeetingTopic');
@@ -362,6 +406,11 @@ function editMeeting(id) {
       topicSelect.appendChild(opt);
     }
     topicSelect.value = meeting.topic;
+  }
+
+  const dateInput = document.getElementById('newMeetingDate');
+  if (dateInput) {
+    dateInput.value = meeting.date || getTodayISODate();
   }
 
   document.getElementById('newMeetingUrl').value = meeting.url || '';
@@ -395,12 +444,10 @@ function editMeeting(id) {
     cb.checked = targetBatches.includes(cb.value);
   });
 
-  // Update UI headers and buttons
   document.getElementById('formTitleHeading').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit Live Class Meeting';
   document.getElementById('btnSaveMeeting').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Update Meeting';
   document.getElementById('btnCancelEdit').style.display = 'inline-block';
 
-  // Smooth scroll to form
   form.scrollIntoView({ behavior: 'smooth', block: 'center' });
   showToast(`Editing: ${meeting.topic}`, 'fa-pen-to-square');
 }
@@ -409,6 +456,10 @@ function editMeeting(id) {
 function cancelEditMeeting() {
   document.getElementById('editingMeetingId').value = '';
   document.getElementById('addMeetingForm').reset();
+  const dateInput = document.getElementById('newMeetingDate');
+  if (dateInput) {
+    dateInput.value = getTodayISODate();
+  }
   populate12HourDropdowns();
 
   document.getElementById('formTitleHeading').innerHTML = '<i class="fa-solid fa-square-plus"></i> Add New Live Class Meeting';
@@ -422,11 +473,11 @@ function handleAddNewMeeting(event) {
 
   const editingId = document.getElementById('editingMeetingId').value;
   const topic = document.getElementById('newMeetingTopic').value.trim();
+  const meetingDate = document.getElementById('newMeetingDate') ? document.getElementById('newMeetingDate').value : getTodayISODate();
   const slot = getFormatted12HourSlot();
   const url = document.getElementById('newMeetingUrl').value.trim();
   const passcode = document.getElementById('newMeetingPasscode').value.trim();
 
-  // Read checked batches
   const checkedBoxes = document.querySelectorAll('input[name="targetBatchCheck"]:checked');
   let selectedBatches = Array.from(checkedBoxes).map(cb => cb.value);
 
@@ -447,25 +498,27 @@ function handleAddNewMeeting(event) {
       meetingsList[index] = {
         ...meetingsList[index],
         topic: topic,
+        date: meetingDate,
         slot: slot,
         url: url,
         passcode: passcode || '',
         targetBatches: selectedBatches
       };
-      showToast(`Meeting "${topic}" updated successfully!`, 'fa-circle-check');
+      showToast(`Meeting "${topic}" updated!`, 'fa-circle-check');
     }
   } else {
     // Add new meeting
     const newMeeting = {
       id: 'mtg_' + Date.now(),
       topic: topic,
+      date: meetingDate,
       slot: slot,
       url: url,
       passcode: passcode || '',
       targetBatches: selectedBatches
     };
     meetingsList.push(newMeeting);
-    showToast(`New Zoom meeting added for [${selectedBatches.join(', ')}]!`, 'fa-circle-check');
+    showToast(`New Zoom meeting added for ${formatDisplayDate(meetingDate)}!`, 'fa-circle-check');
   }
 
   saveMeetingsToStorage();
@@ -610,6 +663,9 @@ function togglePassVisibility() {
 // Handle Student Attendance Submission
 let activeSubmittedMeeting = null;
 
+// Handle Student Attendance Submission
+let activeSubmittedMeeting = null;
+
 function handleAttendanceSubmit(event) {
   event.preventDefault();
 
@@ -625,11 +681,14 @@ function handleAttendanceSubmit(event) {
 
   const selectedMeeting = meetingsList.find(m => m.id === meetingId) || {
     topic: `Live Class`,
+    date: getTodayISODate(),
     url: '#',
     passcode: ''
   };
 
   const course = selectedMeeting.topic || `${studentClass} Live Class`;
+  const classDate = selectedMeeting.date || getTodayISODate();
+  const formattedClassDate = formatDisplayDate(classDate);
 
   activeSubmittedMeeting = selectedMeeting;
 
@@ -639,6 +698,8 @@ function handleAttendanceSubmit(event) {
     name: name,
     class: studentClass,
     course: course,
+    classDate: classDate,
+    formattedClassDate: formattedClassDate,
     timeSlot: timeSlot,
     meetingId: meetingId,
     meetingTopic: selectedMeeting.topic,
@@ -653,7 +714,7 @@ function handleAttendanceSubmit(event) {
   attendanceLogs.unshift(newEntry);
   saveLogsToStorage();
 
-  // Live Sync to Google Sheet Webhook if configured (GET + POST fallback for 100% CORS reliability)
+  // Live Sync to Google Sheet Webhook if configured (GET + POST fallback)
   const gsheetUrl = localStorage.getItem('educlass_gsheet_url_v1') || DEFAULT_GSHEET_URL;
   if (gsheetUrl) {
     try {
@@ -661,11 +722,12 @@ function handleAttendanceSubmit(event) {
         name: newEntry.name || '',
         class: newEntry.class || '',
         course: newEntry.course || '',
+        classDate: newEntry.formattedClassDate || '',
         timeSlot: newEntry.timeSlot || '',
         formattedDate: newEntry.formattedDate || ''
       }).toString();
 
-      // Send GET request with query params (100% reliable across browser CORS policies)
+      // Send GET request with query params
       fetch(`${gsheetUrl}?${queryParams}`, {
         method: 'GET',
         mode: 'no-cors'
@@ -684,9 +746,9 @@ function handleAttendanceSubmit(event) {
   }
 
   // Populate Success Zoom Card with EXACT selected meeting details
-  document.getElementById('studentGreeting').innerText = `Welcome ${name}! Your attendance for ${selectedMeeting.topic} (${studentClass}) has been recorded.`;
+  document.getElementById('studentGreeting').innerText = `Welcome ${name}! Your attendance for ${selectedMeeting.topic} (${studentClass}) has been recorded for ${formattedClassDate}.`;
   document.getElementById('displayTopic').innerText = selectedMeeting.topic;
-  document.getElementById('displayTime').innerText = `${newEntry.formattedDate} | Slot: ${timeSlot}`;
+  document.getElementById('displayTime').innerText = `Scheduled Date: ${formattedClassDate} | Slot: ${timeSlot}`;
   
   if (selectedMeeting.passcode) {
     document.getElementById('displayPasscode').innerText = selectedMeeting.passcode;
@@ -760,7 +822,7 @@ function copyZoomLink() {
 
 // ADMIN DASHBOARD ATTENDANCE LOG FUNCTIONS
 
-// Render Attendance Table
+// Render Attendance Table Grouped by Class Scheduled Date
 function renderAttendanceTable() {
   const tbody = document.getElementById('attendanceTableBody');
   const emptyState = document.getElementById('emptyState');
@@ -788,25 +850,51 @@ function renderAttendanceTable() {
     emptyState.classList.add('hidden');
   }
 
-  filtered.forEach((log, index) => {
-    const tr = document.createElement('tr');
-    const slotDisplay = log.timeSlot || 'Standard Slot';
+  // Group logs by formatted Class Date
+  const groupedByDate = {};
+  filtered.forEach(log => {
+    const dateKey = log.formattedClassDate || formatDisplayDate(log.classDate || getTodayISODate());
+    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+    groupedByDate[dateKey].push(log);
+  });
 
-    tr.innerHTML = `
-      <td>${index + 1}</td>
-      <td><strong>${escapeHtml(log.name)}</strong></td>
-      <td><span class="badge-tag">${escapeHtml(log.class)}</span></td>
-      <td><strong>${escapeHtml(log.course)}</strong></td>
-      <td><span class="badge-tag" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc;"><i class="fa-regular fa-clock"></i> ${escapeHtml(slotDisplay)}</span></td>
-      <td><i class="fa-regular fa-calendar-check" style="color: var(--text-muted); font-size: 0.8rem;"></i> ${log.formattedDate}</td>
-      <td>
-        <button class="btn-icon-danger" title="Delete record" onclick="deleteLogEntry('${log.id}')">
-          <i class="fa-solid fa-trash"></i>
-        </button>
+  let overallIndex = 1;
+
+  Object.keys(groupedByDate).forEach(dateKey => {
+    const logsForDate = groupedByDate[dateKey];
+
+    // Date Group Header Row
+    const headerTr = document.createElement('tr');
+    headerTr.style.background = 'rgba(99, 102, 241, 0.15)';
+    headerTr.style.borderTop = '2px solid var(--primary)';
+
+    headerTr.innerHTML = `
+      <td colspan="7" style="font-weight: 700; color: #a5b4fc; font-size: 0.95rem; padding: 0.75rem 1rem;">
+        <i class="fa-solid fa-calendar-days"></i> Class Scheduled Date: ${escapeHtml(dateKey)} &nbsp;<span style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted);">(${logsForDate.length} attendance records)</span>
       </td>
     `;
+    tbody.appendChild(headerTr);
 
-    tbody.appendChild(tr);
+    logsForDate.forEach((log) => {
+      const tr = document.createElement('tr');
+      const slotDisplay = log.timeSlot || 'Standard Slot';
+
+      tr.innerHTML = `
+        <td>${overallIndex++}</td>
+        <td><strong>${escapeHtml(log.name)}</strong></td>
+        <td><span class="badge-tag">${escapeHtml(log.class)}</span></td>
+        <td><strong>${escapeHtml(log.course)}</strong></td>
+        <td><span class="badge-tag" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc;"><i class="fa-regular fa-clock"></i> ${escapeHtml(slotDisplay)}</span></td>
+        <td><i class="fa-regular fa-calendar-check" style="color: var(--text-muted); font-size: 0.8rem;"></i> ${log.formattedDate}</td>
+        <td>
+          <button class="btn-icon-danger" title="Delete record" onclick="deleteLogEntry('${log.id}')">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </td>
+      `;
+
+      tbody.appendChild(tr);
+    });
   });
 }
 
@@ -853,7 +941,7 @@ function updateStats() {
   document.getElementById('statCourses').innerText = uniqueCourses;
 }
 
-// Export Attendance Logs to CSV (Structured Vertically into Class 11 and Class 12 Sections)
+// Export Attendance Logs to CSV (Structured Vertically into Class 11 and Class 12 Sections & Grouped Date-by-Date)
 function exportToCSV() {
   if (attendanceLogs.length === 0) {
     showToast('No attendance data available to export!', 'fa-triangle-exclamation');
@@ -866,24 +954,41 @@ function exportToCSV() {
 
   let csvContent = 'data:text/csv;charset=utf-8,';
 
+  // Helper to group array by date
+  const groupLogsByDate = (logArr) => {
+    const map = {};
+    logArr.forEach(l => {
+      const d = l.formattedClassDate || formatDisplayDate(l.classDate || getTodayISODate());
+      if (!map[d]) map[d] = [];
+      map[d].push(l);
+    });
+    return map;
+  };
+
   // SECTION 1: CLASS 11TH ATTENDANCE (11 JEE & 11 NEET)
   csvContent += '========================================================================================\n';
   csvContent += '===                     CLASS 11TH ATTENDANCE LOGS (11 JEE & 11 NEET)                ===\n';
   csvContent += '========================================================================================\n';
-  csvContent += 'S.No,Student Name,Class/Batch,Subject/Meeting,Batch Timing Slot,Submission Date & Time\n';
 
   if (logs11.length === 0) {
-    csvContent += '-,No Class 11th attendance records found,,,, \n';
+    csvContent += '-,No Class 11th attendance records found,,,,,\n';
   } else {
-    logs11.forEach((log, i) => {
-      csvContent += [
-        i + 1,
-        `"${log.name.replace(/"/g, '""')}"`,
-        `"${log.class.replace(/"/g, '""')}"`,
-        `"${log.course.replace(/"/g, '""')}"`,
-        `"${(log.timeSlot || '').replace(/"/g, '""')}"`,
-        `"${log.formattedDate.replace(/"/g, '""')}"`
-      ].join(',') + '\n';
+    const grouped11 = groupLogsByDate(logs11);
+    Object.keys(grouped11).forEach(dateKey => {
+      csvContent += `\n--- CLASS SCHEDULED DATE: ${dateKey} ---\n`;
+      csvContent += 'S.No,Student Name,Class/Batch,Subject/Meeting,Batch Timing Slot,Class Date,Submission Time\n';
+
+      grouped11[dateKey].forEach((log, i) => {
+        csvContent += [
+          i + 1,
+          `"${log.name.replace(/"/g, '""')}"`,
+          `"${log.class.replace(/"/g, '""')}"`,
+          `"${log.course.replace(/"/g, '""')}"`,
+          `"${(log.timeSlot || '').replace(/"/g, '""')}"`,
+          `"${dateKey}"`,
+          `"${log.formattedDate.replace(/"/g, '""')}"`
+        ].join(',') + '\n';
+      });
     });
   }
 
@@ -893,20 +998,26 @@ function exportToCSV() {
   csvContent += '========================================================================================\n';
   csvContent += '===                     CLASS 12TH ATTENDANCE LOGS (12 JEE & 12 NEET)                ===\n';
   csvContent += '========================================================================================\n';
-  csvContent += 'S.No,Student Name,Class/Batch,Subject/Meeting,Batch Timing Slot,Submission Date & Time\n';
 
   if (logs12.length === 0) {
-    csvContent += '-,No Class 12th attendance records found,,,, \n';
+    csvContent += '-,No Class 12th attendance records found,,,,,\n';
   } else {
-    logs12.forEach((log, i) => {
-      csvContent += [
-        i + 1,
-        `"${log.name.replace(/"/g, '""')}"`,
-        `"${log.class.replace(/"/g, '""')}"`,
-        `"${log.course.replace(/"/g, '""')}"`,
-        `"${(log.timeSlot || '').replace(/"/g, '""')}"`,
-        `"${log.formattedDate.replace(/"/g, '""')}"`
-      ].join(',') + '\n';
+    const grouped12 = groupLogsByDate(logs12);
+    Object.keys(grouped12).forEach(dateKey => {
+      csvContent += `\n--- CLASS SCHEDULED DATE: ${dateKey} ---\n`;
+      csvContent += 'S.No,Student Name,Class/Batch,Subject/Meeting,Batch Timing Slot,Class Date,Submission Time\n';
+
+      grouped12[dateKey].forEach((log, i) => {
+        csvContent += [
+          i + 1,
+          `"${log.name.replace(/"/g, '""')}"`,
+          `"${log.class.replace(/"/g, '""')}"`,
+          `"${log.course.replace(/"/g, '""')}"`,
+          `"${(log.timeSlot || '').replace(/"/g, '""')}"`,
+          `"${dateKey}"`,
+          `"${log.formattedDate.replace(/"/g, '""')}"`
+        ].join(',') + '\n';
+      });
     });
   }
 
@@ -915,17 +1026,23 @@ function exportToCSV() {
     csvContent += '========================================================================================\n';
     csvContent += '===                             OTHER ATTENDANCE LOGS                                ===\n';
     csvContent += '========================================================================================\n';
-    csvContent += 'S.No,Student Name,Class/Batch,Subject/Meeting,Batch Timing Slot,Submission Date & Time\n';
 
-    otherLogs.forEach((log, i) => {
-      csvContent += [
-        i + 1,
-        `"${log.name.replace(/"/g, '""')}"`,
-        `"${log.class.replace(/"/g, '""')}"`,
-        `"${log.course.replace(/"/g, '""')}"`,
-        `"${(log.timeSlot || '').replace(/"/g, '""')}"`,
-        `"${log.formattedDate.replace(/"/g, '""')}"`
-      ].join(',') + '\n';
+    const groupedOther = groupLogsByDate(otherLogs);
+    Object.keys(groupedOther).forEach(dateKey => {
+      csvContent += `\n--- CLASS SCHEDULED DATE: ${dateKey} ---\n`;
+      csvContent += 'S.No,Student Name,Class/Batch,Subject/Meeting,Batch Timing Slot,Class Date,Submission Time\n';
+
+      groupedOther[dateKey].forEach((log, i) => {
+        csvContent += [
+          i + 1,
+          `"${log.name.replace(/"/g, '""')}"`,
+          `"${log.class.replace(/"/g, '""')}"`,
+          `"${log.course.replace(/"/g, '""')}"`,
+          `"${(log.timeSlot || '').replace(/"/g, '""')}"`,
+          `"${dateKey}"`,
+          `"${log.formattedDate.replace(/"/g, '""')}"`
+        ].join(',') + '\n';
+      });
     });
   }
 

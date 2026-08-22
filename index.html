@@ -182,6 +182,13 @@
               </div>
 
               <div class="form-group">
+                <label for="newMeetingDate"><i class="fa-solid fa-calendar-days"></i> Class Scheduled Date <span class="required">*</span></label>
+                <input type="date" id="newMeetingDate" required style="padding: 0.75rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: #fff; font-family: inherit; font-size: 0.9rem;">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
                 <label><i class="fa-solid fa-clock"></i> Batch Timing (12-Hour AM/PM Selector) <span class="required">*</span></label>
                 <div class="time-picker-container">
                   <div class="time-select-box">
@@ -209,11 +216,11 @@
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div class="form-group">
-              <label for="newMeetingUrl"><i class="fa-solid fa-link"></i> Zoom Meeting Link (URL) <span class="required">*</span></label>
-              <input type="url" id="newMeetingUrl" placeholder="https://zoom.us/j/1234567890?pwd=..." required>
+              <div class="form-group">
+                <label for="newMeetingUrl"><i class="fa-solid fa-link"></i> Zoom Meeting Link (URL) <span class="required">*</span></label>
+                <input type="url" id="newMeetingUrl" placeholder="https://zoom.us/j/1234567890?pwd=..." required>
+              </div>
             </div>
 
             <div class="form-row">
@@ -245,11 +252,11 @@
               </div>
             </div>
 
-            <div class="btn-group-right" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <div class="form-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
               <button type="button" id="btnCancelEdit" class="btn btn-outline-light" onclick="cancelEditMeeting()" style="display: none;">
                 <i class="fa-solid fa-xmark"></i> Cancel Edit
               </button>
-              <button type="submit" id="btnSaveMeeting" class="btn btn-success">
+              <button type="submit" id="btnSaveMeeting" class="btn btn-emerald">
                 <i class="fa-solid fa-plus"></i> Add Meeting
               </button>
             </div>
@@ -261,6 +268,7 @@
               <thead>
                 <tr>
                   <th>#</th>
+                  <th>Class Date</th>
                   <th>Meeting Topic / Title</th>
                   <th>Timing Slot</th>
                   <th>Passcode</th>
