@@ -531,6 +531,10 @@ function switchView(viewName) {
 function openTeacherAuthModal() {
   const modal = document.getElementById('teacherAuthModal');
   const input = document.getElementById('teacherPassInput');
+  const errorBox = document.getElementById('loginErrorMsg');
+
+  if (errorBox) errorBox.classList.add('hidden');
+
   if (modal) {
     if (input) input.value = '';
     modal.classList.remove('hidden');
@@ -540,6 +544,8 @@ function openTeacherAuthModal() {
 
 function closeTeacherAuthModal() {
   const modal = document.getElementById('teacherAuthModal');
+  const errorBox = document.getElementById('loginErrorMsg');
+  if (errorBox) errorBox.classList.add('hidden');
   if (modal) modal.classList.add('hidden');
 }
 
@@ -548,14 +554,36 @@ function handleTeacherLogin(event) {
 
   const inputPass = document.getElementById('teacherPassInput').value;
   const actualPass = getTeacherPassword();
+  const errorBox = document.getElementById('loginErrorMsg');
+  const modalBox = document.querySelector('#teacherAuthModal > div');
 
   if (inputPass === actualPass) {
     sessionStorage.setItem('teacher_unlocked', 'true');
+    if (errorBox) errorBox.classList.add('hidden');
     closeTeacherAuthModal();
     showToast('Teacher Dashboard Unlocked!', 'fa-shield-halved');
     switchView('admin');
   } else {
+    // Show error message box directly inside the Login Modal!
+    if (errorBox) {
+      errorBox.classList.remove('hidden');
+    }
+
+    // Trigger Shake Animation on Login Box
+    if (modalBox) {
+      modalBox.classList.remove('shake-modal');
+      void modalBox.offsetWidth; // Trigger reflow
+      modalBox.classList.add('shake-modal');
+    }
+
+    // Also display floating Toast alert above modal
     showToast('Incorrect Password! Access Denied.', 'fa-triangle-exclamation');
+
+    const input = document.getElementById('teacherPassInput');
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
   }
 }
 
